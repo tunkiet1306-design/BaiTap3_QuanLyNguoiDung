@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Shared;
 
 namespace Server
@@ -33,6 +34,7 @@ namespace Server
             }
             catch (Exception ex)
             {
+                // Ghi log lỗi nội bộ (không gửi chi tiết lỗi kĩ thuật về cho Client)
                 Program.Log($"[ERROR] Lỗi xử lý lệnh {req.Command}: {ex.Message}");
                 return ResponsePacket.Fail(ProtocolConstants.ERR_SERVER_ERROR, "Lỗi máy chủ nội bộ.");
             }
@@ -52,6 +54,7 @@ namespace Server
             }
 
             var (salt, hash) = MatKhau.TaoBam(req.Password);
+
             var entity = new NguoiDungEntity
             {
                 Username = req.Username.Trim(),
@@ -62,17 +65,27 @@ namespace Server
                 Birthday = req.Birthday ?? DateTime.Today
             };
 
-            await _repo.ThemNguoiDungAsync(entity);
-            return ResponsePacket.Ok("Đăng ký tài khoản thành công!");
+            try
+            {
+                await _repo.ThemNguoiDungAsync(entity);
+                return ResponsePacket.Ok("Đăng ký tài khoản thành công!");
+            }
+            catch (SqlException ex) when (ex.Number is 2627 or 2601)
+            {
+                return ResponsePacket.Fail(ProtocolConstants.ERR_USER_EXISTS, "Tên đăng nhập đã tồn tại.");
+            }
         }
 
         private async Task<ResponsePacket> XuLyDangNhapAsync(RequestPacket req, ClientSession session)
         {
+            // Báo chung một lỗi để chống dò mật khẩu (Enumeration Attack)
             const string ThongBaoSai = "Tên đăng nhập hoặc mật khẩu không đúng.";
+
             if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
                 return ResponsePacket.Fail(ProtocolConstants.ERR_AUTH_FAILED, ThongBaoSai);
 
             var entity = await _repo.LayTheoUsernameAsync(req.Username.Trim());
+
             if (entity == null || !MatKhau.KiemTra(req.Password, entity.PasswordSalt, entity.PasswordHash))
                 return ResponsePacket.Fail(ProtocolConstants.ERR_AUTH_FAILED, ThongBaoSai);
 
