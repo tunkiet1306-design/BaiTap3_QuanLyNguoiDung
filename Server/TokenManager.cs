@@ -14,7 +14,7 @@ namespace Server
     public class TokenManager
     {
         private readonly ConcurrentDictionary<string, TokenInfo> _tokens = new();
-        private readonly TimeSpan _tokenLifetime = TimeSpan.FromMinutes(30);
+        private readonly TimeSpan _tokenLifetime = TimeSpan.FromSeconds(30);
 
         public string GenerateToken(string username)
         {

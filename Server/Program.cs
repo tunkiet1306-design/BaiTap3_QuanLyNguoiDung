@@ -9,13 +9,6 @@ using Shared;
 
 namespace Server
 {
-    public class ClientSession
-    {
-        public string SessionId { get; set; } = string.Empty;
-        public string RemoteEndPoint { get; set; } = string.Empty;
-        public string? Username { get; set; }
-        public TcpClient TcpClient { get; set; } = null!;
-    }
 
     internal class Program
     {
@@ -72,7 +65,8 @@ namespace Server
             {
                 SessionId = sessionId,
                 RemoteEndPoint = endpoint,
-                TcpClient = client
+                TcpClient = client,
+                ConnectedAt = DateTime.Now
             };
 
             ActiveClients[sessionId] = session;
@@ -132,7 +126,14 @@ namespace Server
 
         public static void Log(string message)
         {
-            Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
+            string line =
+                $"[{DateTime.Now:HH:mm:ss}] {message}";
+
+            Console.WriteLine(line);
+
+            File.AppendAllText(
+                "server.log",
+                line + Environment.NewLine);
         }
     }
 }
